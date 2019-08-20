@@ -142,11 +142,6 @@ def data_loader(dataframe, window_height, window_length, bg_subtract=False):
     It was originally made to load data slicing the data over Time-Frequency bins, to load data slicing only over time
     use slice_overTime
 
-    :param dataframe:
-    :param window_height:
-    :param window_length:
-    :param bg_subtract:
-    :return:
     """
     main_X = []
     main_Y = []
@@ -202,9 +197,6 @@ def slice_overTime(dataframe, window_length, bg_subtract=False):
     """
     Use to load data slicing ONLY over Time axis.
 
-    :param dataframe:
-    :param window_length:
-    :param bg_subtract:
     :return: data, labels and classes
     """
 
@@ -241,8 +233,16 @@ from os.path import isfile, join
 
 def load_nonFlare(dataSet, window_length, length, is_dir=False):
     """
+    Extracts and loads non-flare files.
+
     If normalize, window_height should be 200 (BC is the max value found so far) so we set the frequency bin to 200
 
+
+    :param dataSet:  Directory or list containing non-flare files
+    :param window_length: Integer, Minimum distance to slice over time axis
+    :param length: Integer, Number of examples to be extracted
+    :param is_dir: Boolean,True oif we are using a directory, false if it is a list
+    :return: Lists, main_X and main_Y, containing the sliced data and their labels respectively
     """
 
     main_X = []
@@ -294,11 +294,19 @@ def load_nonFlare(dataSet, window_length, length, is_dir=False):
 
 
 def load_Flare(dataframe, window_length, bg_subtract=False):
+
     """
+    Loads bunch of data from dataframe that CONTAINS FLARES, slicing each element over time by "window_lenght"
+    It normalizes the frequency range to a value of 200 by default,
     If normalize, window_height should be 200 (BC is the max value found so far) so we set the frequency bin to 200
     IF using already subtracted data have False by default
 
+    :param dataframe: pandas dataframe, in base format
+    :param window_length: Integer, Minimum distance to slice over time axis
+    :param bg_subtract: Boolean, used to apply the standard bg_subt method from sunpy while slicing
+    :return: Lists, main_X and main_Y, containing the sliced data and their labels respectively
     """
+
 
     main_X = []
 

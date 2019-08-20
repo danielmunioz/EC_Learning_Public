@@ -1,0 +1,33 @@
+FunctionalitiesV 0.1
+
+RadioSpectraFlares (currently known as the "Flare_Downloader" Script in the new radiospectra package)
+
+The Aim of the package is to set up a project(enviroment?) to download and read solar flares captured by the e-Callisto instruments, using a main list of 
+flares detected (Monz 2010)
+
+The script is build on top of the Radiospectra Package
+
+The functionality can be divided in 2 main parts: 
+
+-In case we have already dowloaded the Flares Database, we can use the script to navigate into the examples as well as extract some examples at will, 
+we can also use the "Model_Utils" methods to normalize/use the data for machine learning purposes, an integration with tensorflow 2.0 may be currently in process
+
+-In case we don't have the database already we can use the script itself to get one.
+
+For both cases we need a "base" list with basic info such as Instrument, Date, Frequencies, and Time steps of the flares (The format of such a list is specified <here>)
+
+date    obse ving  state   start      end       class  sub           qual.  lower   upper remarks  
+100102  0801 1458   BLEN   0856.3    0858.2    III      G             1      180     416  (relative path to the file if already downloaded)
+
+
+
+Model_Utils (Can be found inside the "Learning" part)
+
+Model Utils is used to try to normalize/preprocess the data in order to feed it to a Machine learning algorithm.
+
+The standard usage is to begin creating and splitting the dataframe and list that contains the dataset, continuing
+with "load_flare" wich slices and loads the data from a dataframe containing flares information into two python lists,
+for the data itself and the labels respectively, then we can use "load_nonflare" to repeat the process but in a folder that does not cointains flares,
+and then we can expand the dimensions of the data or apply background subtractions methods before fedding them to the machine learning part.
+
+An Example of the usage can be found in the Train_bg notebook, note that the e-callisto dataset (with already bg_subt data) is necessary to run the notebook
