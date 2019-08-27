@@ -6,52 +6,6 @@ from astropy.io import fits
 fmt = '%H%M%S'
 
 
-def next_bin_step(bin_step):
-    if bin_step <=3:
-        bin_step+=1
-        return bin_step
-    else:
-        return -1
-
-
-def get_window(data, window_height, window_lenght, bin_step):
-    time_step = window_lenght
-    windows = []
-
-    bin_controller = next_bin_step(bin_step)
-
-    bin_start = (bin_controller * window_height) - window_height
-    bin_end = bin_controller * window_height
-
-    while time_step <= data.shape[1]:
-        x_start = time_step - window_lenght
-        x_end = time_step
-
-        window = data[bin_start:bin_end, x_start:x_end]
-        time_step = time_step + window_lenght
-        windows.append(window)
-
-    return windows
-
-
-def stack_patches(data, window_height, window_lenght):
-    step = int(data.shape[0] / window_height - 1)
-
-    frames = get_window(data, window_height, window_lenght, step)
-    frame_set = np.array(frames)
-    frame_set = np.flip(frame_set, 0)
-    step -= 1
-
-    while step != -1:
-        frames = get_window(data, window_height, window_lenght, step)
-        frames = np.flip(frames, 0)
-        frame_set = np.vstack((frame_set, frames))
-        step -= 1
-
-    frame_set = np.flip(frame_set, 0)
-    return frame_set
-
-
 def auto_find_background(fits_data, amount=0.05):
     data = fits_data
     tmp = (data - np.average(fits_data, 1).reshape(fits_data.shape[0], 1))
@@ -69,8 +23,11 @@ def standard_subtract(fits_data):
     return fits_data - auto_const_bg(fits_data)
 
 
-def length_adjustment(f_lenght, lenght, start_position, end_position, window_size):
-    true_add = window_size - f_lenght
+def length_adjustment(f_length, length, start_position, end_position, window_size):
+    """
+    Adjust length depending on the relative position of the flare respecting of the file
+    """
+    true_add = window_size - f_length
 
     addL = int(true_add / 2)
     addR = np.abs(int(true_add / 2) - true_add)
@@ -78,10 +35,10 @@ def length_adjustment(f_lenght, lenght, start_position, end_position, window_siz
     new_end = end_position + addR
     new_start = start_position - addL
 
-    if new_end <= lenght and new_start >= 0:
+    if new_end <= length and new_start >= 0:
         return new_start, new_end
 
-    if new_end > lenght:
+    if new_end > length:
         # We're in the right
         new_start = start_position - true_add
         new_end = end_position
@@ -97,6 +54,10 @@ def length_adjustment(f_lenght, lenght, start_position, end_position, window_siz
 
 
 def get_flare(dataframe, index, window_length, bg_subtract=False):
+
+    """
+    Extracts Flare from joined Fits file using info from dataframe
+    """
     file_here = fits.open(dataframe.loc[index]['remarks'])
 
     start = datetime.datetime.strptime(dataframe.loc[index]['start'], fmt)
@@ -105,7 +66,7 @@ def get_flare(dataframe, index, window_length, bg_subtract=False):
     time_obs = datetime.datetime.strptime(file_here[0].header['TIME-OBS'][:8], '%H:%M:%S')
     time_end = datetime.datetime.strptime(file_here[0].header['TIME-END'], '%H:%M:%S')
 
-    lenght = file_here[0].data.shape[1]
+    length = file_here[0].data.shape[1]
     time_window = time_end - time_obs
 
     # Trying to normalize data
@@ -117,12 +78,12 @@ def get_flare(dataframe, index, window_length, bg_subtract=False):
     start_seconds = start - time_obs
     end_seconds = end - time_obs
 
-    steps_start = int(start_seconds.seconds / time_window.seconds * lenght)
-    steps_end = int(end_seconds.seconds / time_window.seconds * lenght)
+    steps_start = int(start_seconds.seconds / time_window.seconds * length)
+    steps_end = int(end_seconds.seconds / time_window.seconds * length)
     f_length = steps_end - steps_start
 
     if f_length < window_length:
-        steps_start, steps_end = length_adjustment(f_length, lenght, steps_start, steps_end, window_length)
+        steps_start, steps_end = length_adjustment(f_length, length, steps_start, steps_end, window_length)
 
     # Getting patch
     
@@ -136,36 +97,10 @@ def get_flare(dataframe, index, window_length, bg_subtract=False):
     return flare_patch
 
 
-def data_loader(dataframe, window_height, window_length, bg_subtract=False):
-
-    """
-    It was originally made to load data slicing the data over Time-Frequency bins, to load data slicing only over time
-    use slice_overTime
-
-    """
-    main_X = []
-    main_Y = []
-
-    for index, elemen in dataframe.iterrows():
-
-        flare = get_flare(dataframe, index, window_length, bg_subtract)
-        patchs_temp = stack_patches(flare, window_height, window_length)
-
-        Y = np.full((len(patchs_temp),), dataframe.loc[index]['class'])
-
-        main_Y = np.append(main_Y, Y)
-        main_X.append(patchs_temp)
-
-    main_X = np.vstack(main_X)
-
-    total_examples = dataframe.groupby('class').size()
-
-    classes = np.array(total_examples.index)
-
-    return main_X, main_Y, classes
-
-
 def doubler(data_here):
+    """
+    Doubles the data over Y axis
+    """
     before = np.vstack([data_here[0], data_here[0]])
 
     for elemen in range(data_here.shape[0] - 1):
@@ -178,53 +113,22 @@ def doubler(data_here):
     return before
 
 
-def stack_window(data, window_lenght):
-    time_step = window_lenght
+def stack_window(data, window_length):
+    """
+    Stacks windows over X-axis
+    """
+    time_step = window_length
     windows = []
 
     while time_step <= data.shape[1]:
-        x_start = time_step - window_lenght
+        x_start = time_step - window_length
         x_end = time_step
 
         window = data[:, x_start:x_end]
-        time_step = time_step + window_lenght
+        time_step = time_step + window_length
         windows.append(window)
 
     return windows
-
-
-def slice_overTime(dataframe, window_length, bg_subtract=False):
-    """
-    Use to load data slicing ONLY over Time axis.
-
-    :return: data, labels and classes
-    """
-
-    main_X = []
-    main_Y = []
-
-    for index, elemen in dataframe.iterrows():
-
-        flare = get_flare(dataframe, index, window_length, bg_subtract)
-        if flare.shape[0] < 200:
-            flare = doubler(flare)
-
-        slides = stack_window(flare, window_length)
-
-        # getting labels for Y
-        Y = np.full((len(slides),), dataframe.loc[index]['class'])
-
-        # appending
-        main_Y = np.append(main_Y, Y)
-        main_X.append(slides)
-
-    main_X = np.vstack(main_X)
-
-    total_examples = dataframe.groupby('class').size()
-
-    classes = np.array(total_examples.index)
-
-    return main_X, main_Y, classes
 
 
 from os import listdir
@@ -234,15 +138,6 @@ from os.path import isfile, join
 def load_nonFlare(dataSet, window_length, length, is_dir=False):
     """
     Extracts and loads non-flare files.
-
-    If normalize, window_height should be 200 (BC is the max value found so far) so we set the frequency bin to 200
-
-
-    :param dataSet:  Directory or list containing non-flare files
-    :param window_length: Integer, Minimum distance to slice over time axis
-    :param length: Integer, Number of examples to be extracted
-    :param is_dir: Boolean,True oif we are using a directory, false if it is a list
-    :return: Lists, main_X and main_Y, containing the sliced data and their labels respectively
     """
 
     main_X = []
@@ -296,17 +191,9 @@ def load_nonFlare(dataSet, window_length, length, is_dir=False):
 def load_Flare(dataframe, window_length, bg_subtract=False):
 
     """
-    Loads bunch of data from dataframe that CONTAINS FLARES, slicing each element over time by "window_lenght"
-    It normalizes the frequency range to a value of 200 by default,
-    If normalize, window_height should be 200 (BC is the max value found so far) so we set the frequency bin to 200
-    IF using already subtracted data have False by default
+    Loads data from dataframe that CONTAINS FLARES, slicing each element over time by "window_lenght"
 
-    :param dataframe: pandas dataframe, in base format
-    :param window_length: Integer, Minimum distance to slice over time axis
-    :param bg_subtract: Boolean, used to apply the standard bg_subt method from sunpy while slicing
-    :return: Lists, main_X and main_Y, containing the sliced data and their labels respectively
     """
-
 
     main_X = []
 
@@ -327,7 +214,10 @@ def load_Flare(dataframe, window_length, bg_subtract=False):
 
 
 def split_List(directory, percentage):
+    """
+    Splits List extracted from a folder and, randomly, divides it into Train and eval by percentage
 
+    """
     onlyfiles = [f for f in listdir(directory) if isfile(join(directory, f))]
     onlyfiles = np.random.permutation(onlyfiles)
 
@@ -336,13 +226,17 @@ def split_List(directory, percentage):
     train_set = onlyfiles[0:train_length]
     eval_set = onlyfiles[train_length:np.shape(onlyfiles)[0]]
 
-    train_set = list(map(lambda x: directory + '\\' + x, train_set))
-    eval_set = list(map(lambda x: directory + '\\' + x, eval_set))
+    train_set = list(map(lambda x: directory + '/' + x, train_set))
+    eval_set = list(map(lambda x: directory + '/' + x, eval_set))
 
     return train_set, eval_set
 
 
 def split(dataset, percentage):
+    """
+    Splits dataset and, randomly, divides it into Train and eval by percentage
+
+    """
     train_length = int(dataset.shape[0] * percentage)
     train_set = pd.DataFrame(columns=dataset.columns)
     eval_set = pd.DataFrame(columns=dataset.columns)
