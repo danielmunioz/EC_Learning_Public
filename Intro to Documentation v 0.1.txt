@@ -1,11 +1,9 @@
 FunctionalitiesV 0.1
 
-RadioSpectraFlares (currently known as the "Flare_Downloader" Script in the new radiospectra package)
+RadioSpectraFlares (currently known as "Flare_Downloader" in the new radiospectra package)
 
-The Aim of the package is to set up a project(enviroment?) to download and read solar flares captured by the e-Callisto instruments, using a main list of 
-flares detected (Monz 2010)
-
-The script is build on top of the Radiospectra Package
+The Aim of the package is to set up a enviroment to download and read solar flares captured by the e-Callisto instruments
+The project is build on top of the Radiospectra Package
 
 The functionality can be divided in 2 main parts: 
 
